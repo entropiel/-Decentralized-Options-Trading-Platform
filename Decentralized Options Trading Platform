@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract OptionsPlatform {
+    struct Option {
+        address writer;
+        uint256 strikePrice;
+        uint256 premium;
+        uint256 expiry;
+        bool exercised;
+    }
+
+    mapping(uint256 => Option) public options;
+    uint256 public optionCount;
+
+    function writeOption(uint256 strikePrice, uint256 premium, uint256 expiry) public payable {
+        require(msg.value >= strikePrice, "Insufficient collateral");
+
+        optionCount++;
+        options[optionCount] = Option(msg.sender, strikePrice, premium, expiry, false);
+    }
+
+    function buyOption(uint256 optionId) public payable {
+        Option storage option = options[optionId];
+        require(msg.value == option.premium, "Incorrect premium");
+
+        option.writer.transfer(option.premium);
+    }
+
+    function exerciseOption(uint256 optionId) public payable {
+        Option storage option = options[optionId];
+        require(!option.exercised, "Already exercised");
+        require(block.timestamp <= option.expiry, "Option expired");
+
+        if (msg.value >= option.strikePrice) {
+            payable(msg.sender).transfer(option.strikePrice);
+        }
+        option.exercised = true;
+    }
+}
